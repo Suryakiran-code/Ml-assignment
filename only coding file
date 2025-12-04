@@ -1,0 +1,190 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
+from sklearn.metrics import silhouette_score
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, accuracy_score
+print("all installed ")
+
+
+df = pd.read_excel("Online Retail dataset ML.xlsx")
+
+# Show first few rows
+df.head()
+
+# Remove rows without customer ID
+df = df.dropna(subset=['CustomerID'])
+
+# Remove returns/negative quantities
+df = df[df['Quantity'] > 0]
+
+# Create Monetary column
+df['Monetary'] = df['Quantity'] * df['UnitPrice']
+
+df.head()
+
+# Standardization
+scaler = StandardScaler()
+rfm_scaled = scaler.fit_transform(rfm)
+
+
+# K-Means Clustering
+
+kmeans = KMeans(n_clusters=3, random_state=42)
+rfm['Cluster_KMeans'] = kmeans.fit_predict(rfm_scaled)
+rfm[['Recency', 'Frequency', 'Monetary', 'Cluster_KMeans']].head()
+
+
+# Agglomerative Clustering
+
+agg = AgglomerativeClustering(n_clusters=3)
+rfm['Cluster_Agg'] = agg.fit_predict(rfm_scaled)
+rfm[['Recency', 'Frequency', 'Monetary', 'Cluster_Agg']].head()
+
+
+# DBSCAN Clustering
+
+dbscan = DBSCAN(eps=0.7, min_samples=4)
+rfm['Cluster_DBSCAN'] = dbscan.fit_predict(rfm_scaled)
+rfm[['Recency', 'Frequency', 'Monetary', 'Cluster_DBSCAN']].head()
+
+
+# Create Labels for Classification (Value Groups)
+rfm['ValueGroup'] = pd.qcut(rfm['Monetary'], q=3, labels=[0,1,2])
+rfm.head()
+
+# Split Data for Classification
+X = rfm[['Recency', 'Frequency', 'Monetary']]
+y = rfm['ValueGroup']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+
+# Logistic Regression Model
+
+log_model = LogisticRegression(max_iter=300)
+log_model.fit(X_train, y_train)
+y_pred_log = log_model.predict(X_test)
+
+
+# Random forest model
+rf_model = RandomForestClassifier(n_estimators=200)
+rf_model.fit(X_train, y_train)
+y_pred_rf = rf_model.predict(X_test)
+
+
+# SVM Model
+
+svm_model = SVC(kernel='rbf')
+svm_model.fit(X_train, y_train)
+y_pred_svm = svm_model.predict(X_test)
+
+
+# Evaluation Reports
+
+print("\nLogistic Regression Results:")
+print(classification_report(y_test, y_pred_log))
+
+print("\nRandom Forest Results:")
+print(classification_report(y_test, y_pred_rf))
+
+print("\nSVM Results:")
+print(classification_report(y_test, y_pred_svm))
+
+print("\nAccuracy Scores:")
+print("Logistic Regression:", accuracy_score(y_test, y_pred_log))
+print("Random Forest:", accuracy_score(y_test, y_pred_rf))
+print("SVM:", accuracy_score(y_test, y_pred_svm))
+
+
+# PLOTS 
+# RFM Distribution Plots
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# RFM Distribution
+plt.figure(figsize=(15, 4))
+
+plt.subplot(1, 3, 1)
+sns.histplot(rfm['Recency'], kde=True)
+plt.title("Recency Distribution")
+
+plt.subplot(1, 3, 2)
+sns.histplot(rfm['Frequency'], kde=True)
+plt.title("Frequency Distribution")
+
+plt.subplot(1, 3, 3)
+sns.histplot(rfm['Monetary'], kde=True)
+plt.title("Monetary Distribution")
+
+plt.tight_layout()
+plt.show()
+
+
+
+# Heatmap of Correlations
+
+plt.figure(figsize=(6, 4))
+sns.heatmap(rfm.corr(), annot=True, cmap="Blues")
+plt.title("RFM Feature Correlation Heatmap")
+plt.show()
+
+
+# Cluster Visualization Using PCA
+
+from sklearn.decomposition import PCA
+
+# Apply PCA
+pca = PCA(n_components=2)
+pca_result = pca.fit_transform(rfm_scaled)
+
+rfm['PCA1'] = pca_result[:, 0]
+rfm['PCA2'] = pca_result[:, 1]
+
+plt.figure(figsize=(7, 5))
+sns.scatterplot(
+    x='PCA1', 
+    y='PCA2', 
+    hue='Cluster', 
+    palette='Set2', 
+    data=rfm,
+    alpha=0.7
+)
+plt.title("K-Means Cluster Visualization (PCA Reduced)")
+plt.show()
+
+
+
+cluster_centers = pd.DataFrame(
+    kmeans.cluster_centers_, 
+    columns=['Recency', 'Frequency', 'Monetary']
+)
+
+plt.figure(figsize=(6, 4))
+sns.heatmap(cluster_centers, annot=True, cmap="Oranges")
+plt.title("Cluster Centers (RFM Values)")
+plt.ylabel("Cluster")
+plt.show()
+
+
+# Pairplot of RFM Colored by Cluster
+
+sns.pairplot(rfm, vars=['Recency', 'Frequency', 'Monetary'], hue='Cluster', palette='Set2')
+plt.show()
+
+
+
+
+
+
+
+
